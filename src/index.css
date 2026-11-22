@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Slate neutrals with a teal accent (the design doc's "model A" colour); dark follows the system. */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-bg: #f3f6f8;
+  --color-surface: #ffffff;
+  --color-sunk: #e9eef2;
+  --color-ink: #132331;
+  --color-muted: #566879;
+  --color-line: #d6dee6;
+  --color-accent: #0b7a72;
+  --color-accent-ink: #ffffff;
+  --color-warn: #a85a07;
+  --color-bad: #b42318;
+  --color-good: #1a7f37;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0d141b;
+    --color-surface: #142029;
+    --color-sunk: #101920;
+    --color-ink: #e4ecf2;
+    --color-muted: #93a5b5;
+    --color-line: #24333f;
+    --color-accent: #3fc4b6;
+    --color-accent-ink: #07211e;
+    --color-warn: #f0a24a;
+    --color-bad: #ff8a80;
+    --color-good: #5fd38d;
+    color-scheme: dark;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
