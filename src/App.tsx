@@ -3,6 +3,7 @@ import Brief from './screens/Brief'
 import Digest from './screens/Digest'
 import Review from './screens/Review'
 import Runs from './screens/Runs'
+import RunAll from './RunAll'
 
 const SCREENS = { digest: 'Digest', review: 'Review', runs: 'Run history', brief: 'Brief & schedule' } as const
 type Screen = keyof typeof SCREENS
@@ -38,6 +39,7 @@ export default function App() {
               </button>
             ))}
           </nav>
+          <RunAll />
         </div>
       </header>
       <main className="mx-auto grid max-w-5xl gap-8 px-4 py-6">
