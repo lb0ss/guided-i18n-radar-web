@@ -5,7 +5,7 @@ import Review from './screens/Review'
 import Runs from './screens/Runs'
 import RunAll from './RunAll'
 
-const SCREENS = { digest: 'Digest', review: 'Review', runs: 'Run history', brief: 'Brief & schedule' } as const
+const SCREENS = { brief: 'Brief & schedule', digest: 'Digest', review: 'Review', runs: 'Run history' } as const
 type Screen = keyof typeof SCREENS
 
 function useHashScreen(): [Screen, (s: Screen) => void] {
