@@ -36,7 +36,7 @@ export default function Review() {
           {opps.data?.map((o) => <OpportunityCard key={o.id} o={o} />)}
         </Section>
       )}
-      {tab === 'comments' && <OnYourPosts comments={comments.data ?? []} onPaste={() => setTab('paste')} />}
+      {tab === 'comments' && <OnYourPosts comments={comments.data ?? []} />}
       {tab === 'paste' && <PasteForm />}
       {tab === 'intel' && (
         <Section title="Intel: read, don't reply">
@@ -121,7 +121,8 @@ const PLATFORMS = [
   { key: 'x', name: 'X', watches: 'replies to and mentions of you' },
 ] as const
 
-function OnYourPosts({ comments, onPaste }: { comments: Comment[]; onPaste: () => void }) {
+function OnYourPosts({ comments }: { comments: Comment[] }) {
+  const [pasting, setPasting] = useState(false)
   const schedule = useQuery({ queryKey: ['schedule'], queryFn: () => must<Schedule[]>(api.GET('/schedule')) })
   const checked = schedule.data?.find((s) => s.job === 'checks')?.last_run_at
   return (
@@ -138,10 +139,11 @@ function OnYourPosts({ comments, onPaste }: { comments: Comment[]; onPaste: () =
             </div>
           )
         })}
-        <div className="p-4">
+        <div className="grid gap-3 p-4">
           <PlatformHead name="Reddit" note="not watched (no API): paste a comment to draft a reply">
-            <Button variant="plain" onClick={onPaste}>Paste a Reddit comment</Button>
+            {!pasting && <Button variant="plain" onClick={() => setPasting(true)}>Paste a Reddit comment</Button>}
           </PlatformHead>
+          {pasting && <PasteFields platform="reddit" onCancel={() => setPasting(false)} />}
         </div>
       </div>
     </Section>
@@ -181,11 +183,6 @@ function CommentCard({ c }: { c: Comment }) {
 }
 
 function PasteForm() {
-  const posts = useQuery({ queryKey: ['posts'], queryFn: () => must<Post[]>(api.GET('/posts')) })
-  const [text, setText] = useState('')
-  const [channel, setChannel] = useState('reddit-reply')
-  const [post, setPost] = useState<string>('')
-  const req: DraftRequest = { kind: 'pasted', text, channel, post_id: post ? Number(post) : null, confirm: false }
   return (
     <Section title="Draft a Reply">
       <p className="text-sm text-muted">
@@ -193,30 +190,52 @@ function PasteForm() {
         only paste the new comment.
       </p>
       <Card className="grid gap-3">
-        <div className="flex flex-wrap gap-4 text-sm">
+        <PasteFields />
+      </Card>
+    </Section>
+  )
+}
+
+/** The paste-and-draft fields. With `platform` (inside that platform's row on "Comments on your posts"),
+ * the channel is fixed and only that platform's posts are offered; onCancel closes it. */
+function PasteFields({ platform, onCancel }: { platform?: 'reddit'; onCancel?: () => void }) {
+  const posts = useQuery({ queryKey: ['posts'], queryFn: () => must<Post[]>(api.GET('/posts')) })
+  const [text, setText] = useState('')
+  const [channel, setChannel] = useState('reddit-reply')
+  const [post, setPost] = useState<string>('')
+  const req: DraftRequest = { kind: 'pasted', text, channel, post_id: post ? Number(post) : null, confirm: false }
+  const choices = posts.data?.filter((p) => !platform || p.platform === platform)
+  return (
+    <div className="grid gap-3">
+      <div className="flex flex-wrap gap-4 text-sm">
+        {!platform && (
           <label className="grid gap-1">
             <span className="text-muted">Where you'll post it</span>
             <select value={channel} onChange={(e) => setChannel(e.target.value)} className="rounded-md border border-line bg-surface px-2 py-1.5">
               {CHANNELS.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
-          <label className="grid min-w-0 flex-1 gap-1">
-            <span className="text-muted">Reply on which post?</span>
-            <select value={post} onChange={(e) => setPost(e.target.value)} className="min-w-0 rounded-md border border-line bg-surface px-2 py-1.5">
-              <option value="">Not one of my posts</option>
-              {posts.data?.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
-            </select>
-          </label>
-        </div>
-        <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="u/someone: Does it handle plurals for Polish?"
-          className="min-h-40 rounded-md border border-line bg-surface p-3 text-sm"
-        />
+        )}
+        <label className="grid min-w-0 flex-1 gap-1">
+          <span className="text-muted">{platform ? 'Which of your Reddit posts?' : 'Reply on which post?'}</span>
+          <select value={post} onChange={(e) => setPost(e.target.value)} className="min-w-0 rounded-md border border-line bg-surface px-2 py-1.5">
+            <option value="">Not one of my posts</option>
+            {choices?.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+          </select>
+        </label>
+      </div>
+      <textarea
+        autoFocus={!!platform}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="u/someone: Does it handle plurals for Polish?"
+        className="min-h-32 rounded-md border border-line bg-surface p-3 text-sm"
+      />
+      <div className="flex flex-wrap items-start gap-2">
         <DraftFlow key={`${channel}-${post}-${text.length > 0}`} req={req} label="Draft a reply" disabled={!text.trim()} />
-      </Card>
-    </Section>
+        {onCancel && <Button variant="quiet" onClick={onCancel}>Cancel</Button>}
+      </div>
+    </div>
   )
 }
 

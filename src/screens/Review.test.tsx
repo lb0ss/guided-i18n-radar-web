@@ -73,6 +73,11 @@ test('comments on your posts are grouped by platform, and Reddit points to Draft
   expect(await block('X')).toHaveTextContent('Reply')
   expect(await block('X')).toHaveTextContent('dev_ana')
   expect(await block('dev.to')).toHaveTextContent('Nothing new')
+  // Reddit: the paste form opens in place (no tab switch), and Cancel closes it again
   fireEvent.click(screen.getByRole('button', { name: 'Paste a Reddit comment' }))
-  expect(await screen.findByText(/only paste the new comment/)).toBeInTheDocument()
+  expect(await screen.findByText('Which of your Reddit posts?')).toBeInTheDocument()
+  expect(screen.getByText('New on your posts')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.queryByText('Which of your Reddit posts?')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Paste a Reddit comment' })).toBeInTheDocument()
 })
