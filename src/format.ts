@@ -9,3 +9,16 @@ export function ago(iso: string | null | undefined): string {
 }
 
 export const money = (n: number) => `$${n < 0.1 ? n.toFixed(3) : n.toFixed(2)}`
+
+/** Where a research result came from. */
+export const SOURCE_NAME: Record<string, string> = {
+  github: 'GitHub', devto: 'dev.to', stackoverflow: 'Stack Overflow', hackernews: 'Hacker News', x: 'X', reddit: 'Reddit',
+}
+
+/** What a watched item is, in the same words as the notifications: "GitHub issue", "X reply"… */
+export function commentKind(c: { platform: string; external_id?: string }): string {
+  if (c.external_id?.startsWith('github:issue:')) return 'GitHub issue'
+  if (c.platform === 'github') return 'GitHub issue comment'
+  if (c.platform === 'x') return 'X reply'
+  return `${SOURCE_NAME[c.platform] ?? c.platform} comment`
+}

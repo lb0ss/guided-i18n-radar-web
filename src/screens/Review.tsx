@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { api, must, type Comment, type DraftJob, type DraftRequest, type Estimate, type Opportunity, type Post } from '../api/client'
 import { Badge, Button, Card, CopyButton, Empty, ErrorNote, Section } from '../ui'
-import { ago, money } from '../format'
+import { ago, commentKind, money, SOURCE_NAME } from '../format'
 
 const TABS = { reply: 'Worth a reply', comments: 'Comments on your posts', paste: 'Draft a Reply', intel: 'Intel', drafts: 'Drafts' } as const
 type Tab = keyof typeof TABS
@@ -38,7 +38,7 @@ export default function Review() {
       )}
       {tab === 'comments' && (
         <Section title="New comments on your posts">
-          <p className="text-sm text-muted">dev.to and GitHub are checked daily. For Reddit and X, paste the comment under Draft a Reply.</p>
+          <p className="text-sm text-muted">New GitHub issues and issue comments, dev.to comments, and replies to or mentions of you on X are checked daily. For Reddit, paste the comment under Draft a Reply.</p>
           {comments.data?.length === 0 && <Empty>No new comments.</Empty>}
           {comments.data?.map((c) => <CommentCard key={c.id} c={c} />)}
         </Section>
@@ -104,7 +104,7 @@ function OpportunityCard({ o, intel }: { o: Opportunity; intel?: boolean }) {
     <Card className="grid gap-2">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         <Badge tone="accent">{o.category}</Badge>
-        <span>{o.source}</span>
+        <span>{SOURCE_NAME[o.source] ?? o.source}</span>
         <span>· {ago(o.created_at)}</span>
         <span>· {o.replies} replies</span>
         <span>· relevance {o.relevance}/5</span>
@@ -129,7 +129,7 @@ function CommentCard({ c }: { c: Comment }) {
   return (
     <Card className="grid gap-2">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-        <Badge>{c.platform}</Badge><span>{c.author}</span><span>· {ago(c.created_at)}</span>
+        <Badge>{commentKind(c)}</Badge><span>{c.author}</span><span>· {ago(c.created_at)}</span>
         <a className="underline" href={c.url} target="_blank" rel="noreferrer">open</a>
       </div>
       <p className="whitespace-pre-line text-sm">{c.body}</p>

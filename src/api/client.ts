@@ -14,7 +14,7 @@ export type Opportunity = {
   id: number; url: string; source: string; title: string; excerpt: string; created_at: string; replies: number
   relevance: number; category: string; angle: string; reason: string; state: string
 }
-export type Comment = { id: number; platform: string; post_url: string; url: string; author: string; body: string; created_at: string; state: string }
+export type Comment = { id: number; platform: string; external_id: string; post_url: string; url: string; author: string; body: string; created_at: string; state: string }
 export type Post = { id: number; platform: string; url: string; title: string }
 export type Attempt = {
   id: number; attempt: number; text: string; verdict: string; cost: number
