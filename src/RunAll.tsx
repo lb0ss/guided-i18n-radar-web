@@ -5,7 +5,7 @@ import { Button } from './ui'
 import { money } from './format'
 
 type Result = {
-  skipped?: string; new_comments?: number; replies?: number; intel?: number; cost?: number; failed?: string[]
+  skipped?: string; new_comments?: number; new_summary?: string; replies?: number; intel?: number; cost?: number; failed?: string[]
 }
 
 const run = (job: 'checks' | 'research') => must<Result>(api.POST('/run/{job}', { params: { path: { job } } }))
@@ -25,7 +25,7 @@ export default function RunAll() {
       setStep('research')
       const r = await run('research')
       const parts = [
-        c.skipped ?? `${c.new_comments ?? 0} new comment${c.new_comments === 1 ? '' : 's'}`,
+        c.skipped ?? c.new_summary ?? `${c.new_comments ?? 0} new`,
         r.skipped ?? `${r.replies ?? 0} worth a reply, ${r.intel ?? 0} intel`,
       ]
       if (r.cost) parts.push(money(r.cost))
