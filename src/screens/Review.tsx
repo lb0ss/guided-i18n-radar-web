@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { api, must, type Comment, type DraftJob, type DraftRequest, type Estimate, type Opportunity, type Post } from '../api/client'
+import { useState, type ReactNode } from 'react'
+import { api, must, type Comment, type DraftJob, type DraftRequest, type Estimate, type Opportunity, type Post, type Schedule } from '../api/client'
 import { Badge, Button, Card, CopyButton, Empty, ErrorNote, Section } from '../ui'
-import { ago, commentKind, money, SOURCE_NAME } from '../format'
+import { ago, money, shortKind, SOURCE_NAME } from '../format'
 
 const TABS = { reply: 'Worth a reply', comments: 'Comments on your posts', paste: 'Draft a Reply', intel: 'Intel', drafts: 'Drafts' } as const
 type Tab = keyof typeof TABS
@@ -36,13 +36,7 @@ export default function Review() {
           {opps.data?.map((o) => <OpportunityCard key={o.id} o={o} />)}
         </Section>
       )}
-      {tab === 'comments' && (
-        <Section title="New comments on your posts">
-          <p className="text-sm text-muted">New GitHub issues and issue comments, dev.to comments, and replies to or mentions of you on X are checked daily. For Reddit, paste the comment under Draft a Reply.</p>
-          {comments.data?.length === 0 && <Empty>No new comments.</Empty>}
-          {comments.data?.map((c) => <CommentCard key={c.id} c={c} />)}
-        </Section>
-      )}
+      {tab === 'comments' && <OnYourPosts comments={comments.data ?? []} onPaste={() => setTab('paste')} />}
       {tab === 'paste' && <PasteForm />}
       {tab === 'intel' && (
         <Section title="Intel: read, don't reply">
@@ -120,6 +114,51 @@ function OpportunityCard({ o, intel }: { o: Opportunity; intel?: boolean }) {
   )
 }
 
+/** What's watched on each platform, in a fixed order. Reddit isn't watched: it points to Draft a Reply. */
+const PLATFORMS = [
+  { key: 'github', name: 'GitHub', watches: 'new issues and issue comments on your repo' },
+  { key: 'devto', name: 'dev.to', watches: 'comments on your articles' },
+  { key: 'x', name: 'X', watches: 'replies to and mentions of you' },
+] as const
+
+function OnYourPosts({ comments, onPaste }: { comments: Comment[]; onPaste: () => void }) {
+  const schedule = useQuery({ queryKey: ['schedule'], queryFn: () => must<Schedule[]>(api.GET('/schedule')) })
+  const checked = schedule.data?.find((s) => s.job === 'checks')?.last_run_at
+  return (
+    <Section title="New on your posts" aside={<span className="text-sm text-muted">Checked {ago(checked)} · daily</span>}>
+      <div className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
+        {PLATFORMS.map((p) => {
+          const items = comments.filter((c) => c.platform === p.key)
+          return (
+            <div key={p.key} className="grid gap-3 p-4">
+              <PlatformHead name={p.name} note={p.watches}>
+                {items.length ? <Badge tone="accent">{items.length} new</Badge> : <span className="text-sm text-muted">Nothing new</span>}
+              </PlatformHead>
+              {items.map((c) => <CommentCard key={c.id} c={c} />)}
+            </div>
+          )
+        })}
+        <div className="p-4">
+          <PlatformHead name="Reddit" note="not watched (no API): paste a comment to draft a reply">
+            <Button variant="plain" onClick={onPaste}>Paste a Reddit comment</Button>
+          </PlatformHead>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
+function PlatformHead({ name, note, children }: { name: string; note: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <div className="min-w-0">
+        <span className="font-semibold">{name}</span> <span className="text-sm text-muted">{note}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
 function CommentCard({ c }: { c: Comment }) {
   const qc = useQueryClient()
   const dismiss = useMutation({
@@ -127,9 +166,9 @@ function CommentCard({ c }: { c: Comment }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['comments'] }),
   })
   return (
-    <Card className="grid gap-2">
+    <div className="grid gap-2 rounded-md border border-line bg-bg/40 p-3">
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-        <Badge>{commentKind(c)}</Badge><span>{c.author}</span><span>· {ago(c.created_at)}</span>
+        <Badge>{shortKind(c)}</Badge><span className="font-medium text-ink">{c.author}</span><span>· {ago(c.created_at)}</span>
         <a className="underline" href={c.url} target="_blank" rel="noreferrer">open</a>
       </div>
       <p className="whitespace-pre-line text-sm">{c.body}</p>
@@ -137,7 +176,7 @@ function CommentCard({ c }: { c: Comment }) {
         <DraftFlow req={{ kind: 'comment', id: c.id, confirm: false }} />
         <Button variant="quiet" disabled={dismiss.isPending} onClick={() => dismiss.mutate()}>No reply needed</Button>
       </div>
-    </Card>
+    </div>
   )
 }
 

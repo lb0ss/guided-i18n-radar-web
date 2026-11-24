@@ -22,3 +22,10 @@ export function commentKind(c: { platform: string; external_id?: string }): stri
   if (c.platform === 'x') return 'X reply'
   return `${SOURCE_NAME[c.platform] ?? c.platform} comment`
 }
+
+/** The kind within its platform's section: "Issue", "Issue comment", "Reply", "Mention", "Comment". */
+export function shortKind(c: { platform: string; external_id?: string; post_url?: string; url?: string }): string {
+  if (c.platform === 'github') return c.external_id?.startsWith('github:issue:') ? 'Issue' : 'Issue comment'
+  if (c.platform === 'x') return c.post_url && c.post_url === c.url ? 'Mention' : 'Reply'
+  return 'Comment'
+}
