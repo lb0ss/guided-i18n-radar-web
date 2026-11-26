@@ -4,7 +4,11 @@ import { api, must, type Schedule } from '../api/client'
 import { Badge, Button, Card, ErrorNote, Section } from '../ui'
 import { ago } from '../format'
 
-const LABEL: Record<string, string> = { checks: 'Stats and comments on your posts', research: 'Research (finds threads, ~1¢ a run)' }
+const LABEL: Record<string, string> = {
+  checks: 'Stats and comments on your posts',
+  research: 'Research (finds threads, ~1¢ a run)',
+  posts: 'X post drafts (suggests topics, drafts the best one, ~4¢ a run; never posts)',
+}
 
 export default function Brief() {
   return (
@@ -43,8 +47,8 @@ function JobRow({ s }: { s: Schedule }) {
         <div className="min-w-48 flex-1">
           <div className="font-medium">{LABEL[s.job] ?? s.job}</div>
           <div className="text-sm text-muted">
-            Last run {ago(s.last_run_at)}
-            {next && ` · next around ${next.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}
+            {s.has_run === false ? 'Not run yet' : `Last run ${ago(s.last_run_at)}`}
+            {next && ` · ${s.has_run === false ? 'first run' : 'next'} around ${next.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}`}
           </div>
         </div>
         <label className="flex items-center gap-2 text-sm">

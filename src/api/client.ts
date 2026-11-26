@@ -8,7 +8,7 @@ export const api = createClient<paths>({
 })
 
 // The API's dict responses are untyped in its schema; these are the shapes the screens use.
-export type Schedule = { job: string; interval_hours: number; enabled: boolean; last_run_at: string | null; built: boolean }
+export type Schedule = { job: string; interval_hours: number; enabled: boolean; last_run_at: string | null; built: boolean; has_run?: boolean }
 export type StatRow = { source: string; metric: string; value: number; at: string; change: number | null; history: { at: string; value: number }[] }
 export type Opportunity = {
   id: number; url: string; source: string; title: string; excerpt: string; created_at: string; replies: number
