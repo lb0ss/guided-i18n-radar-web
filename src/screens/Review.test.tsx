@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import Review from './Review'
 
@@ -112,4 +112,25 @@ test('a new X post is drafted from a suggested topic, and the draft shows its im
   expect(screen.getByText(/itemName=BosiTerryLin\.guided-i18n/)).toBeInTheDocument()
   expect(screen.getByText(/\/ 280 characters/)).toBeInTheDocument()
   expect(bodies).toEqual([{ kind: 'post', id: 3, confirm: false }, { kind: 'post', id: 3, confirm: true }])
+})
+
+test('drafts are grouped by where they will be posted', async () => {
+  const xPost = { ...job, id: 9, kind: 'post', channel: 'x-post', plan: { topic: 'Undo', visual: '', alt_text: '', first_reply: '' },
+    attempts: [{ ...job.attempts[0], id: 31, text: 'An X post draft' }], final_draft_id: 31 }
+  const xReply = { ...job, id: 8, kind: 'comment', channel: 'x-post', plan: null,
+    attempts: [{ ...job.attempts[0], id: 32, text: 'A reply on X' }], final_draft_id: 32 }
+  const gh = { ...job, id: 7, plan: null, posted_url: 'https://github.com/a/b/issues/1#c', posted_text: 'Posted reply' }
+  vi.stubGlobal('fetch', vi.fn(async (req: Request) => {
+    const path = new URL(req.url).pathname
+    const json = (d: unknown) => new Response(JSON.stringify(d), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return json(path === '/drafts' ? [xPost, xReply, gh] : [])
+  }))
+  render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+  fireEvent.click(screen.getByRole('button', { name: /^Drafts/ }))
+  await screen.findByDisplayValue('An X post draft')
+  const group = (name: string) => screen.getByText(name, { selector: 'span.font-semibold' }).closest('div.grid') as HTMLElement
+  expect(within(group('New X posts')).getByDisplayValue('An X post draft')).toBeInTheDocument()
+  expect(within(group('X replies')).getByDisplayValue('A reply on X')).toBeInTheDocument()
+  expect(within(group('GitHub')).getByText('1 posted')).toBeInTheDocument()
+  expect(group('Reddit')).toHaveTextContent('Nothing yet')
 })

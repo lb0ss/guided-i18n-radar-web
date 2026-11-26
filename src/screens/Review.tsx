@@ -296,13 +296,50 @@ function TopicCard({ t }: { t: PostTopic }) {
   )
 }
 
+/** Drafts by where they'll be posted, in a fixed order; each group says what it holds and how many are waiting. */
+const DRAFT_GROUPS = [
+  { key: 'x-post', name: 'New X posts', note: 'your own posts, for the Build in Public community' },
+  { key: 'github', name: 'GitHub', note: 'replies on issues' },
+  { key: 'reddit', name: 'Reddit', note: 'replies and posts' },
+  { key: 'x-reply', name: 'X replies', note: 'replies to people on X' },
+  { key: 'devto', name: 'dev.to', note: 'replies on articles' },
+  { key: 'hn', name: 'Hacker News', note: 'comments' },
+  { key: 'so', name: 'Stack Overflow', note: 'answers' },
+] as const
+
+function draftGroup(j: DraftJob): string {
+  if (j.kind === 'post') return 'x-post'
+  if (j.channel === 'x-post') return 'x-reply'  // a reply to someone on X uses the X format too
+  return j.channel.split('-')[0]
+}
+
 function DraftList() {
-  const drafts = useQuery({ queryKey: ['drafts'], queryFn: () => must<DraftJob[]>(api.GET('/drafts', { params: { query: { limit: 30 } } })) })
+  const drafts = useQuery({ queryKey: ['drafts'], queryFn: () => must<DraftJob[]>(api.GET('/drafts', { params: { query: { limit: 50 } } })) })
+  const all = drafts.data ?? []
+  const known = new Set<string>(DRAFT_GROUPS.map((g) => g.key))
+  const groups = [...DRAFT_GROUPS, ...[...new Set(all.map(draftGroup))].filter((k) => !known.has(k)).map((k) => ({ key: k, name: k, note: '' }))]
   return (
     <Section title="Drafts">
+      <p className="text-sm text-muted">Newest first in each group. Waiting drafts come before ones you've marked as posted.</p>
       <ErrorNote error={drafts.error} />
-      {drafts.data?.length === 0 && <Empty>No drafts yet.</Empty>}
-      {drafts.data?.map((j) => <DraftView key={j.id} job={j} />)}
+      {drafts.data && (
+        <div className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
+          {groups.map((g) => {
+            const items = all.filter((j) => draftGroup(j) === g.key).sort((a, b) => Number(!!a.posted_url) - Number(!!b.posted_url))
+            const waiting = items.filter((j) => !j.posted_url).length
+            return (
+              <div key={g.key} className="grid gap-3 p-4">
+                <PlatformHead name={g.name} note={g.note}>
+                  {items.length === 0 ? <span className="text-sm text-muted">Nothing yet</span>
+                    : <span className="flex gap-2">{waiting > 0 && <Badge tone="accent">{waiting} waiting</Badge>}
+                      {items.length - waiting > 0 && <Badge>{items.length - waiting} posted</Badge>}</span>}
+                </PlatformHead>
+                {items.map((j) => <DraftView key={j.id} job={j} />)}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </Section>
   )
 }
