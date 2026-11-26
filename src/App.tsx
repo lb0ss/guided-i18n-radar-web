@@ -2,17 +2,21 @@ import { useEffect, useState } from 'react'
 import Brief from './screens/Brief'
 import { useQuery } from '@tanstack/react-query'
 import { api, must, type DraftJob } from './api/client'
-import Digest from './screens/Digest'
+import Dashboard from './screens/Dashboard'
 import Drafts from './screens/Drafts'
 import Review from './screens/Review'
 import Runs from './screens/Runs'
 import RunAll from './RunAll'
 
-const SCREENS = { brief: 'Brief & schedule', digest: 'Digest', review: 'Review', drafts: 'Drafts', runs: 'Run history' } as const
+const SCREENS = { brief: 'Brief & schedule', dashboard: 'Dashboard', review: 'Review', drafts: 'Drafts', runs: 'Run history' } as const
+const ALIASES: Record<string, Screen> = { digest: 'dashboard' }  // old links keep working
 type Screen = keyof typeof SCREENS
 
 function useHashScreen(): [Screen, (s: Screen) => void] {
-  const read = () => (location.hash.slice(1) in SCREENS ? location.hash.slice(1) : 'digest') as Screen
+  const read = (): Screen => {
+    const h = location.hash.slice(1)
+    return h in SCREENS ? (h as Screen) : (ALIASES[h] ?? 'dashboard')
+  }
   const [screen, setScreen] = useState<Screen>(read)
   useEffect(() => {
     const on = () => setScreen(read())
@@ -52,7 +56,7 @@ export default function App() {
         </div>
       </header>
       <main className="mx-auto grid max-w-5xl gap-8 px-4 py-6">
-        {screen === 'digest' && <Digest go={go} />}
+        {screen === 'dashboard' && <Dashboard go={go} />}
         {screen === 'review' && <Review />}
         {screen === 'drafts' && <Drafts />}
         {screen === 'runs' && <Runs />}

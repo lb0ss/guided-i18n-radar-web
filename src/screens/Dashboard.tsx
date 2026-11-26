@@ -6,7 +6,7 @@ import Reach from './Reach'
 
 const SOURCE = { openvsx: 'Open VSX', marketplace: 'VS Code Marketplace', github: 'GitHub', devto: 'dev.to' } as Record<string, string>
 
-export default function Digest({ go }: { go: (s: 'review') => void }) {
+export default function Dashboard({ go }: { go: (s: 'review') => void }) {
   const qc = useQueryClient()
   const stats = useQuery({ queryKey: ['stats'], queryFn: () => must<{ stats: StatRow[] }>(api.GET('/stats')) })
   const comments = useQuery({ queryKey: ['comments', 'new'], queryFn: () => must<Comment[]>(api.GET('/comments', { params: { query: { state: 'new' } } })) })
