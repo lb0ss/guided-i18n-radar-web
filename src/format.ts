@@ -29,3 +29,28 @@ export function shortKind(c: { platform: string; external_id?: string; post_url?
   if (c.platform === 'x') return c.post_url && c.post_url === c.url ? 'Mention' : 'Reply'
   return 'Comment'
 }
+
+/** A time span in plain words: "6 hours", "1 day", "2 days". */
+export function span(hours: number): string {
+  if (hours < 20) return `${Math.max(1, Math.round(hours))} hour${Math.round(hours) === 1 ? '' : 's'}`
+  const d = Math.round(hours / 24 * 2) / 2
+  return `${d} day${d === 1 ? '' : 's'}`
+}
+
+/** "+42 in 2 days · ~21/day · +4.4%" — a change always says over how long. */
+export function changeText(c: { delta: number; hours: number; per_day: number | null; pct: number | null }): string {
+  const sign = c.delta > 0 ? '+' : ''
+  const parts = [`${sign}${c.delta.toLocaleString()} in ${span(c.hours)}`]
+  if (c.per_day != null && c.hours >= 20) parts.push(`~${Math.round(c.per_day)}/day`)
+  if (c.pct != null) parts.push(`${sign}${c.pct}%`)
+  return parts.join(' · ')
+}
+
+/** "Mon 6:32 PM" */
+export const when = (iso: string) => new Date(iso).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+
+/** "Nov 22" for a YYYY-MM-DD day (local, no time-zone shift). */
+export function dayLabel(day: string): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric' })
+}
