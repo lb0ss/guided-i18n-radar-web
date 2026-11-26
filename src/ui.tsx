@@ -81,3 +81,15 @@ export function CopyButton({ text }: { text: string }) {
     </Button>
   )
 }
+
+export function PlatformHead({ name, note, children }: { name: string; note: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      <div className="min-w-0">
+        <span className="font-semibold">{name}</span> <span className="text-sm text-muted">{note}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
