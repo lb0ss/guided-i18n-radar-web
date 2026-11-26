@@ -5,7 +5,7 @@ import { Badge, Button, Card, Empty, ErrorNote, PlatformHead, Section } from '..
 import { ago, shortKind, SOURCE_NAME } from '../format'
 import { DraftFlow } from '../drafting'
 
-const TABS = { reply: 'Worth a reply', comments: 'Comments on your posts', paste: 'Draft a Reply', intel: 'Intel' } as const
+const TABS = { reply: 'Worth a reply', comments: 'Comments on your posts', paste: 'Paste a thread', intel: 'Intel' } as const
 type Tab = keyof typeof TABS
 const CHANNELS = ['reddit-reply', 'reddit-post', 'github-comment', 'devto-comment', 'hn-comment', 'so-answer', 'x-post']
 
@@ -76,7 +76,7 @@ function OpportunityCard({ o, intel }: { o: Opportunity; intel?: boolean }) {
   )
 }
 
-/** What's watched on each platform, in a fixed order. Reddit isn't watched: it points to Draft a Reply. */
+/** What's watched on each platform, in a fixed order. Reddit isn't watched: its row opens the paste form in place. */
 const PLATFORMS = [
   { key: 'github', name: 'GitHub', watches: 'new issues and issue comments on your repo' },
   { key: 'devto', name: 'dev.to', watches: 'comments on your articles' },
@@ -135,10 +135,11 @@ function CommentCard({ c }: { c: Comment }) {
 
 function PasteForm() {
   return (
-    <Section title="Draft a Reply">
+    <Section title="Paste a thread">
       <p className="text-sm text-muted">
-        Paste the comment you're answering (and the lines it replies to, if any). For a comment on one of your posts, pick the post: Radar adds its text, so you
-        only paste the new comment.
+        For a thread Radar didn't bring you: a Reddit comment, an HN or Stack Overflow thread, a tweet. Paste the comment you're answering (and the lines it
+        replies to, if any) and pick where you'll post the reply. For a comment on one of your posts, pick the post: Radar adds its text, so you only paste
+        the new comment. The draft appears under Drafts.
       </p>
       <Card className="grid gap-3">
         <PasteFields />

@@ -52,7 +52,7 @@ test('cancel spends nothing', async () => {
   expect(calls.every((c) => (c.body as { confirm: boolean }).confirm === false)).toBe(true)
 })
 
-test('comments on your posts are grouped by platform, and Reddit points to Draft a Reply', async () => {
+test('comments on your posts are grouped by platform, and Reddit opens the paste form in place', async () => {
   const comment = (id: number, platform: string, external_id: string, author: string, body: string, url = `https://x.com/i/web/status/${id}`) =>
     ({ id, platform, external_id, post_url: platform === 'x' ? 'https://x.com/i/web/status/200' : 'https://github.com/lb0ss/guided-i18n/issues/8',
        url, author, body, created_at: '2026-11-23T10:00:00Z', state: 'new' })
