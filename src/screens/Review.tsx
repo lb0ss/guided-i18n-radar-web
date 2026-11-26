@@ -1,10 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
-import { api, must, type Comment, type DraftJob, type DraftRequest, type Estimate, type Opportunity, type Post, type Schedule } from '../api/client'
+import { api, must, type Comment, type DraftJob, type DraftRequest, type Estimate, type Opportunity, type Post, type PostTopic, type Schedule } from '../api/client'
 import { Badge, Button, Card, CopyButton, Empty, ErrorNote, Section } from '../ui'
 import { ago, money, shortKind, SOURCE_NAME } from '../format'
 
-const TABS = { reply: 'Worth a reply', comments: 'Comments on your posts', paste: 'Draft a Reply', intel: 'Intel', drafts: 'Drafts' } as const
+const TABS = { reply: 'Worth a reply', comments: 'Comments on your posts', paste: 'Draft a Reply', post: 'New X post', intel: 'Intel', drafts: 'Drafts' } as const
 type Tab = keyof typeof TABS
 const CHANNELS = ['reddit-reply', 'reddit-post', 'github-comment', 'devto-comment', 'hn-comment', 'so-answer', 'x-post']
 
@@ -38,6 +38,7 @@ export default function Review() {
       )}
       {tab === 'comments' && <OnYourPosts comments={comments.data ?? []} />}
       {tab === 'paste' && <PasteForm />}
+      {tab === 'post' && <NewPost />}
       {tab === 'intel' && (
         <Section title="Intel: read, don't reply">
           <p className="text-sm text-muted">Competitors' trackers, maintainers' own to-dos, roadmap signals.</p>
@@ -239,6 +240,62 @@ function PasteFields({ platform, onCancel }: { platform?: 'reddit'; onCancel?: (
   )
 }
 
+const SOURCE_LABEL: Record<string, string> = {
+  feedback: 'user feedback', release: 'release', question: 'a real question', intel: 'intel', candidate: 'from the X brief', stats: 'stats',
+}
+
+/** Your own X post: pick a suggested topic (with its evidence) or write one; the same write ⇄ evaluate loop drafts it. */
+function NewPost() {
+  const qc = useQueryClient()
+  const topics = useQuery({ queryKey: ['topics'], queryFn: () => must<PostTopic[]>(api.GET('/posts/topics', { params: { query: { status: 'new' } } })) })
+  const suggest = useMutation({ mutationFn: () => must<PostTopic[]>(api.POST('/posts/topics')), onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }) })
+  const [own, setOwn] = useState('')
+  return (
+    <Section
+      title="New X post"
+      aside={<Button disabled={suggest.isPending} onClick={() => suggest.mutate()}>{suggest.isPending ? 'Suggesting…' : 'Suggest 3 topics (<1¢)'}</Button>}
+    >
+      <p className="text-sm text-muted">
+        Topics come from Radar's data: new releases, real questions in comments and replies, intel, and the X brief's candidates. The draft follows the X
+        brief (docs/launch/x.md) and FACTS.md, and is checked like a reply. Radar also drafts one by itself on the schedule. Nothing is posted for you.
+      </p>
+      <ErrorNote error={topics.error ?? suggest.error} />
+      {topics.data?.length === 0 && <Empty>No topics yet. Suggest some, or write your own below.</Empty>}
+      {topics.data?.map((t) => <TopicCard key={t.id} t={t} />)}
+      <Card className="grid gap-2">
+        <label className="grid gap-1 text-sm">
+          <span className="text-muted">Or your own topic</span>
+          <input value={own} onChange={(e) => setOwn(e.target.value)} placeholder="e.g. why the extension never sends whole files"
+            className="rounded-md border border-line bg-surface px-2 py-1.5" />
+        </label>
+        <DraftFlow key={own.trim().length > 0 ? 'own' : 'none'} req={{ kind: 'post', text: own, confirm: false }} label="Draft this post" disabled={!own.trim()} />
+      </Card>
+    </Section>
+  )
+}
+
+function TopicCard({ t }: { t: PostTopic }) {
+  const qc = useQueryClient()
+  const dismiss = useMutation({
+    mutationFn: () => must(api.POST('/posts/topics/{topic_id}/dismiss', { params: { path: { topic_id: t.id } } })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['topics'] }),
+  })
+  return (
+    <Card className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+        <Badge tone="accent">{SOURCE_LABEL[t.source] ?? t.source}</Badge><span>{ago(t.created_at)}</span>
+      </div>
+      <h3 className="font-semibold">{t.title}</h3>
+      <p className="text-sm">{t.angle}</p>
+      <p className="text-sm text-muted">Evidence: {t.evidence}</p>
+      <div className="flex flex-wrap items-start gap-2">
+        <DraftFlow req={{ kind: 'post', id: t.id, confirm: false }} label="Draft this post" />
+        <Button variant="quiet" disabled={dismiss.isPending} onClick={() => dismiss.mutate()}>Not this one</Button>
+      </div>
+    </Card>
+  )
+}
+
 function DraftList() {
   const drafts = useQuery({ queryKey: ['drafts'], queryFn: () => must<DraftJob[]>(api.GET('/drafts', { params: { query: { limit: 30 } } })) })
   return (
@@ -247,6 +304,16 @@ function DraftList() {
       {drafts.data?.length === 0 && <Empty>No drafts yet.</Empty>}
       {drafts.data?.map((j) => <DraftView key={j.id} job={j} />)}
     </Section>
+  )
+}
+
+function PlanItem({ label, text, copy }: { label: string; text: string; copy?: boolean }) {
+  if (!text) return null
+  return (
+    <div className="grid gap-1">
+      <div className="flex items-center justify-between gap-2"><span className="text-xs font-medium text-muted">{label}</span>{copy && <CopyButton text={text} />}</div>
+      <p className="whitespace-pre-line">{text}</p>
+    </div>
   )
 }
 
@@ -267,8 +334,9 @@ function DraftView({ job }: { job: DraftJob }) {
         <span className="text-muted">{job.channel} · {job.attempts.length} attempt{job.attempts.length === 1 ? '' : 's'} · {money(job.cost)} · {ago(job.created_at)}</span>
         {job.posted_url && <Badge tone="accent">posted</Badge>}
       </div>
+      {job.plan && <div className="text-sm"><span className="text-muted">New X post on: </span><b>{job.plan.topic}</b></div>}
       <details className="text-sm">
-        <summary className="cursor-pointer text-muted">What it answers ({job.thread.length} message{job.thread.length === 1 ? '' : 's'})</summary>
+        <summary className="cursor-pointer text-muted">{job.plan ? 'What the writer was given (topic and X brief)' : `What it answers (${job.thread.length} message${job.thread.length === 1 ? '' : 's'})`}</summary>
         <div className="mt-2 grid max-h-64 gap-2 overflow-auto">
           {job.thread.map((m, i) => <p key={i} className="whitespace-pre-line rounded-md bg-sunk p-2">{m}</p>)}
         </div>
@@ -276,8 +344,17 @@ function DraftView({ job }: { job: DraftJob }) {
       <textarea value={text} onChange={(e) => setText(e.target.value)} className="min-h-40 rounded-md border border-line bg-surface p-3 text-[15px] leading-6" />
       <div className="flex flex-wrap items-center gap-2">
         <CopyButton text={text} />
-        <span className="text-xs text-muted">{text.length} characters · edit freely: your final text is kept when you mark it posted</span>
+        <span className={`text-xs ${job.channel === 'x-post' && text.length > 280 ? 'text-bad' : 'text-muted'}`}>
+          {text.length}{job.channel === 'x-post' ? ' / 280' : ''} characters · edit freely: your final text is kept when you mark it posted
+        </span>
       </div>
+      {job.plan && (
+        <div className="grid gap-3 rounded-md bg-sunk p-3 text-sm">
+          <PlanItem label="Image idea" text={job.plan.visual} />
+          <PlanItem label="Alt text (Add description, before posting)" text={job.plan.alt_text} copy />
+          <PlanItem label="First reply (the links, posted under your post)" text={job.plan.first_reply} copy />
+        </div>
+      )}
       <details className="text-sm">
         <summary className="cursor-pointer text-muted">How it was checked</summary>
         <ol className="mt-2 grid gap-2">

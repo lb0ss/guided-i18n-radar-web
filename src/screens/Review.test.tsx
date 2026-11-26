@@ -81,3 +81,35 @@ test('comments on your posts are grouped by platform, and Reddit points to Draft
   expect(screen.queryByText('Which of your Reddit posts?')).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Paste a Reddit comment' })).toBeInTheDocument()
 })
+
+test('a new X post is drafted from a suggested topic, and the draft shows its image idea, alt text and links', async () => {
+  const bodies: unknown[] = []
+  const topic = { id: 3, created_at: '2026-11-25T10:00:00Z', title: 'Undo that keeps your edits', angle: 'Undo checks first.',
+    evidence: 'r/SideProject comment', source: 'feedback', status: 'new', cost: 0.002 }
+  const postJob = { ...job, id: 9, kind: 'post', channel: 'x-post', source_id: 3,
+    attempts: [{ ...job.attempts[0], id: 21, text: 'Undo used to wipe your edits. Since 0.1.3 it checks first.' }], final_draft_id: 21,
+    plan: { topic: 'Undo that keeps your edits', visual: 'The Undo prompt in VS Code', alt_text: 'A prompt offering Undo',
+            first_reply: 'VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=BosiTerryLin.guided-i18n' } }
+  vi.stubGlobal('fetch', vi.fn(async (req: Request) => {
+    const path = new URL(req.url).pathname
+    const json = (d: unknown) => new Response(JSON.stringify(d), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    if (path === '/posts/topics' && req.method === 'GET') return json([topic])
+    if (path === '/drafts' && req.method === 'POST') {
+      const body = await req.json()
+      bodies.push(body)
+      return json(body.confirm ? postJob : { needs_confirmation: true, estimate: 0.03, worst_case: 0.09 })
+    }
+    return json([])
+  }))
+  render(<QueryClientProvider client={new QueryClient()}><Review /></QueryClientProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'New X post' }))
+  expect(await screen.findByText('Undo that keeps your edits')).toBeInTheDocument()
+  expect(screen.getByText('user feedback')).toBeInTheDocument()
+  fireEvent.click(screen.getAllByRole('button', { name: 'Draft this post' })[0])
+  fireEvent.click(await screen.findByRole('button', { name: 'Draft it' }))
+  expect(await screen.findByText('The Undo prompt in VS Code')).toBeInTheDocument()
+  expect(screen.getByText('A prompt offering Undo')).toBeInTheDocument()
+  expect(screen.getByText(/itemName=BosiTerryLin\.guided-i18n/)).toBeInTheDocument()
+  expect(screen.getByText(/\/ 280 characters/)).toBeInTheDocument()
+  expect(bodies).toEqual([{ kind: 'post', id: 3, confirm: false }, { kind: 'post', id: 3, confirm: true }])
+})

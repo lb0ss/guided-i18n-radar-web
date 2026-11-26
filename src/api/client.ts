@@ -25,7 +25,9 @@ export type DraftJob = {
   id: number; created_at: string; kind: string; source_id: number | null; post_id: number | null; channel: string
   thread: string[]; status: string; final_draft_id: number | null; cost: number; posted_url: string | null
   posted_text: string | null; attempts: Attempt[]
+  plan: { topic: string; visual: string; alt_text: string; first_reply: string } | null  // only for a new post
 }
+export type PostTopic = { id: number; created_at: string; title: string; angle: string; evidence: string; source: string; status: string; cost: number }
 export type Run = { id: number; job: string; started_at: string; finished_at: string | null; status: string; cost: number
   steps: { name: string; status: string; seconds: number; detail: string }[] }
 export type Estimate = { needs_confirmation: true; estimate: number; worst_case: number }
