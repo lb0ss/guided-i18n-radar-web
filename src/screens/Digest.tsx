@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, must, type Comment, type Opportunity, type Run, type StatRow } from '../api/client'
 import { Badge, Button, Card, ErrorNote, Section, Sparkline } from '../ui'
 import { ago } from '../format'
+import Reach from './Reach'
 
 const SOURCE = { openvsx: 'Open VSX', marketplace: 'VS Code Marketplace', github: 'GitHub', devto: 'dev.to' } as Record<string, string>
 
@@ -19,7 +20,11 @@ export default function Digest({ go }: { go: (s: 'review') => void }) {
 
   const lastOf = (job: string) => runs.data?.find((r) => r.job === job)
   const bySource = new Map<string, StatRow[]>()
-  for (const s of stats.data?.stats ?? []) bySource.set(s.source, [...(bySource.get(s.source) ?? []), s])
+  // downloads are shown (readably) in Reach above; everything else stays here
+  for (const s of stats.data?.stats ?? []) {
+    if (s.metric === 'downloads' && (s.source === 'openvsx' || s.source === 'marketplace')) continue
+    bySource.set(s.source, [...(bySource.get(s.source) ?? []), s])
+  }
 
   return (
     <>
@@ -41,6 +46,8 @@ export default function Digest({ go }: { go: (s: 'review') => void }) {
           </div>
         }
       >
+        <Reach />
+        <h3 className="mt-2 text-sm font-semibold text-muted">Other numbers</h3>
         <div className="grid gap-3 sm:grid-cols-2">
           {[...bySource.entries()].map(([source, rows]) => (
             <Card key={source}>
@@ -51,7 +58,7 @@ export default function Digest({ go }: { go: (s: 'review') => void }) {
                     <dt className="text-sm text-muted">{r.metric.replace('_', ' ')}</dt>
                     <dd className="text-right font-mono text-sm tabular-nums">
                       {r.value.toLocaleString()}
-                      {r.change ? <span className={r.change > 0 ? 'text-good' : 'text-bad'}> {r.change > 0 ? '+' : ''}{r.change}</span> : null}
+                      {r.change ? <span className={r.change > 0 ? 'text-good' : 'text-bad'} title="since the previous check"> {r.change > 0 ? '+' : ''}{r.change}</span> : null}
                     </dd>
                     <Sparkline className="h-5 w-20" values={r.history.map((h) => h.value)} />
                   </div>
